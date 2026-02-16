@@ -20,7 +20,8 @@ class SystemSkill(Skill):
             'required': ['level']}}}, {'type': 'function', 'function': {
             'name': 'open_app', 'description':
             'Open an application on the computer', 'parameters': {'type':
-            'object', 'properties': {'app_name': {'type': 'string'}},
+            'object', 'properties': {'app_name': {'type': 'string'}, 
+            'path': {'type': 'string', 'description': 'Optional file or folder path to open'}},
             'required': ['app_name']}}}, {'type': 'function', 'function': {
             'name': 'close_app', 'description':
             'Close/quit an application on the computer', 'parameters': {'type':
@@ -56,7 +57,7 @@ class SystemSkill(Skill):
         except Exception as e:
             return json.dumps({'error': str(e)})
 
-    def open_app(self, app_name):
+    def open_app(self, app_name, path=None):
         """Open and activate an application (cross-platform)"""
         try:
             current_os=get_os()
@@ -80,11 +81,11 @@ class SystemSkill(Skill):
                 actual_app=app_name
             
             if current_os=='macos':
-                return self._open_app_macos(actual_app, app_name)
+                return self._open_app_macos(actual_app, app_name, path)
             elif current_os=='windows':
-                return self._open_app_windows(actual_app, app_name)
+                return self._open_app_windows(actual_app, app_name, path)
             else:
-                return self._open_app_linux(actual_app, app_name)
+                return self._open_app_linux(actual_app, app_name, path)
                 
         except Exception as e:
             return json.dumps({'status': 'error', 'message': str(e)})
@@ -94,7 +95,6 @@ class SystemSkill(Skill):
         try:
             current_os = get_os()
             
-            # Common app name mappings
             app_mapping_common = {
                 'notepad': {'macos': 'TextEdit', 'windows': 'notepad', 'linux': 'gedit'},
                 'calculator': {'macos': 'Calculator', 'windows': 'calc', 'linux': 'gnome-calculator'},
@@ -123,7 +123,7 @@ class SystemSkill(Skill):
         except Exception as e:
             return json.dumps({'status': 'error', 'message': str(e)})
 
-    def _open_app_macos(self, actual_app, original_name):
+    def _open_app_macos(self, actual_app, original_name, path=None):
         """Open app on macOS using AppleScript"""
         def find_app(name):
             try:
@@ -146,8 +146,29 @@ class SystemSkill(Skill):
                 'app': actual_app
             })
         
-        script=f'tell application "{actual_app}"\n    activate\nend tell'
-        result=os.system(f"osascript -e '{script}'")
+        if path:
+            # Handle user home directory expansion ~
+            if path.startswith('~'):
+                path = os.path.expanduser(path)
+            # Or assume relative to Documents if not absolute
+            elif not os.path.isabs(path):
+                # Try finding it in Documents or Home
+                possible_paths = [
+                    os.path.join(os.path.expanduser('~/Documents'), path),
+                    os.path.join(os.path.expanduser('~'), path),
+                    path 
+                ]
+                for p in possible_paths:
+                    if os.path.exists(p):
+                        path = p
+                        break
+            
+            # Using 'open -a "App" "Path"' is more reliable for opening files
+            cmd = f'open -a "{app_path}" "{path}"'
+            result = os.system(cmd)
+        else:
+            script=f'tell application "{actual_app}"\n    activate\nend tell'
+            result=os.system(f"osascript -e '{script}'")
         
         if result==0:
             return json.dumps({

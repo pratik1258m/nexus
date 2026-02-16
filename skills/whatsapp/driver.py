@@ -15,9 +15,7 @@ class WhatsAppDriver:
     def get_driver(cls, browser='chrome'):
         if cls._driver is not None:
             try:
-                # Check if driver is still alive
                 _ = cls._driver.current_url
-                # If browser type changed, we need a new driver
                 current_browser = cls._driver.name.lower()
                 if (browser == 'safari' and 'safari' not in current_browser) or \
                    (browser == 'chrome' and 'chrome' not in current_browser):
@@ -46,21 +44,25 @@ class WhatsAppDriver:
                 logger.info('Safari driver initialized successfully')
                 return driver
             else:
-                # Default to Chrome - use default profile to reuse existing WhatsApp Web session
                 options=Options()
                 
-                # Use default Chrome profile (where WhatsApp Web is already logged in)
-                # This reuses your existing Chrome session instead of creating a new one
-                user_data_dir = os.path.expanduser('~/Library/Application Support/Google/Chrome')
+                nexus_profile_dir = os.path.expanduser('~/.nexus/chrome_profile')
+                os.makedirs(nexus_profile_dir, exist_ok=True)
                 
-                options.add_argument(f'--user-data-dir={user_data_dir}')
+                options.add_argument(f'--user-data-dir={nexus_profile_dir}')
                 options.add_argument('--profile-directory=Default')
+                
                 options.add_argument('--start-maximized')
                 options.add_argument('--disable-blink-features=AutomationControlled')
+                
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument('--remote-debugging-port=9222')
+                
                 options.add_experimental_option('excludeSwitches', ['enable-automation'])
                 options.add_experimental_option('useAutomationExtension', False)
                 
-                logger.info(f'Using default Chrome profile (reusing existing WhatsApp Web session)')
+                logger.info(f'Using dedicated Nexus Chrome profile: {nexus_profile_dir}')
                 
                 service=Service(ChromeDriverManager().install())
                 driver=webdriver.Chrome(service=service, options=options)

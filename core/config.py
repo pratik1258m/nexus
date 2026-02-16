@@ -44,6 +44,7 @@ class VoiceConfig:
     phrase_time_limit: int=15
     ambient_duration: float=0.5
     preferred_voice: str='Daniel'
+    listen_languages: list[str] = field(default_factory=lambda: ['en-IN', 'en-US', 'hi-IN'])
     
     def validate(self) -> tuple[bool, list[str]]:
         """Validate voice configuration"""
@@ -106,11 +107,9 @@ class NexusConfig:
     system: SystemConfig=field(default_factory=SystemConfig)
     state_machine: StateMachineConfig=field(default_factory=StateMachineConfig)
     
-    # Paths
     base_dir: Path=field(default_factory=lambda: Path(__file__).parent.parent)
     data_dir: Path=field(default_factory=lambda: Path.home() / '.nexus')
     
-    # Runtime settings
     debug_mode: bool=False
     log_level: str='INFO'
     
@@ -150,40 +149,33 @@ class ConfigManager:
         if self._config is not None:
             return
         
-        # Load environment variables
         load_dotenv()
         
-        # Initialize configuration
         self._config=NexusConfig()
         self._load_from_env()
     
     def _load_from_env(self):
         """Load configuration from environment variables"""
-        # API Configuration
         self._config.api.groq_api_key=os.getenv('GROQ_API_KEY')
         self._config.api.groq_model=os.getenv('GROQ_MODEL', self._config.api.groq_model)
         self._config.api.gemini_api_key=os.getenv('GEMINI_API_KEY')
         self._config.api.gemini_model=os.getenv('GEMINI_MODEL', self._config.api.gemini_model)
         self._config.api.openweathermap_api_key=os.getenv('OPENWEATHERMAP_API_KEY')
         
-        # Voice Configuration
         self._config.voice.energy_threshold_min=int(os.getenv('VOICE_ENERGY_MIN', self._config.voice.energy_threshold_min))
         self._config.voice.energy_threshold_max=int(os.getenv('VOICE_ENERGY_MAX', self._config.voice.energy_threshold_max))
         self._config.voice.pause_threshold=float(os.getenv('VOICE_PAUSE_THRESHOLD', self._config.voice.pause_threshold))
         self._config.voice.preferred_voice=os.getenv('VOICE_PREFERRED', self._config.voice.preferred_voice)
         
-        # System Configuration
         self._config.system.default_city=os.getenv('DEFAULT_CITY', self._config.system.default_city)
         self._config.system.email_address=os.getenv('EMAIL_ADDRESS')
         self._config.system.email_password=os.getenv('EMAIL_PASSWORD')
         self._config.system.email_imap_server=os.getenv('EMAIL_IMAP_SERVER', self._config.system.email_imap_server)
         
-        # State Machine Configuration
         self._config.state_machine.memory_ttl_seconds=int(os.getenv('MEMORY_TTL_SECONDS', self._config.state_machine.memory_ttl_seconds))
         self._config.state_machine.enable_local_execution=os.getenv('ENABLE_LOCAL_EXECUTION', 'true').lower() == 'true'
         self._config.state_machine.local_confidence_threshold=float(os.getenv('LOCAL_CONFIDENCE_THRESHOLD', self._config.state_machine.local_confidence_threshold))
         
-        # Runtime settings
         self._config.debug_mode=os.getenv('DEBUG', 'false').lower() == 'true'
         self._config.log_level=os.getenv('LOG_LEVEL', 'INFO').upper()
     
@@ -208,7 +200,6 @@ class ConfigManager:
         """Get system configuration"""
         return self._config.system
 
-# Global configuration instance
 _config_manager=ConfigManager()
 
 def get_config() -> NexusConfig:

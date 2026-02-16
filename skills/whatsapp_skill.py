@@ -66,7 +66,7 @@ class WhatsappSkill(Skill):
             contact_name_lower=name.lower()
             
             if contact_name_lower in self.contacts:
-                search_term=self.contacts[contact_name_lower] # Use the actual value from contacts.json
+                search_term=self.contacts[contact_name_lower]
                 logger.info(f"Found '{name}' in contacts: {search_term}")
             else:
                 search_term=name

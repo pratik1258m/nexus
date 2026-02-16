@@ -15,11 +15,11 @@ logger = get_logger(__name__)
 @dataclass
 class TaskContext:
     """Context from a completed task"""
-    command: str                          # Original command
-    entities: Dict[str, Any]              # Extracted entities (app, contact, etc.)
-    result: str                           # Task result
-    timestamp: datetime                   # When task completed
-    metadata: Dict[str, Any] = field(default_factory=dict)  # Additional context
+    command: str
+    entities: Dict[str, Any]
+    result: str
+    timestamp: datetime
+    metadata: Dict[str, Any] = field(default_factory=dict)
     
     def is_expired(self, ttl_seconds: int) -> bool:
         """Check if context has expired"""
@@ -37,7 +37,6 @@ class MemoryManager:
     Automatically expires old contexts
     """
     
-    # Entity extraction patterns
     ENTITY_PATTERNS = {
         'app': r'\b(?:open|close|launch|quit)\s+(\w+(?:\s+\w+)?)',
         'contact': r'\b(?:to|message|call|text)\s+(\w+)',
@@ -75,7 +74,6 @@ class MemoryManager:
             entities: Extracted entities (auto-extracted if None)
             metadata: Additional context metadata
         """
-        # Auto-extract entities if not provided
         if entities is None:
             entities = self._extract_entities(command)
         
@@ -89,7 +87,6 @@ class MemoryManager:
         
         self._contexts.append(context)
         
-        # Limit context history
         if len(self._contexts) > self._max_contexts:
             self._contexts.pop(0)
         
@@ -167,35 +164,33 @@ class MemoryManager:
         if not context:
             return new_command
         
-        # Detect follow-up/reference commands
         follow_up_indicators = [
             'do that', 'try that', 'retry', 'again', 'same thing',
             'on chrome', 'on safari', 'with chrome', 'with safari',
-            'use chrome', 'use safari', 'in chrome', 'in safari'
+            'use chrome', 'use safari', 'in chrome', 'in safari',
+            'continue', 'next', 'more'
         ]
         
         new_lower = new_command.lower()
         is_follow_up = any(indicator in new_lower for indicator in follow_up_indicators)
         
         if is_follow_up:
-            # This is a follow-up command - inject full previous context
             logger.info(f"Detected follow-up command: {new_command}")
             
-            # Extract browser preference from new command
             browser = None
             if 'chrome' in new_lower:
                 browser = 'chrome'
             elif 'safari' in new_lower:
                 browser = 'safari'
             
-            # Build enhanced prompt with full context
             enhanced_parts = []
             
-            # Include previous command
             if context.command:
                 enhanced_parts.append(f"Previous command: {context.command}")
             
-            # Include entities from previous command
+            if context.result:
+                 enhanced_parts.append(f"Previous result: {context.result}")
+
             if context.entities:
                 if 'name' in context.entities:
                     enhanced_parts.append(f"Contact: {context.entities['name']}")
@@ -204,11 +199,9 @@ class MemoryManager:
                 if 'action' in context.entities:
                     enhanced_parts.append(f"Action: {context.entities['action']}")
             
-            # Add browser preference if detected
             if browser:
                 enhanced_parts.append(f"Browser: {browser}")
             
-            # Reconstruct the command
             if context.entities.get('action') == 'send_whatsapp_message':
                 name = context.entities.get('name', 'unknown')
                 message = context.entities.get('message', 'hello')
@@ -217,11 +210,9 @@ class MemoryManager:
                 logger.info(f"Reconstructed command: {enhanced}")
                 return enhanced
             
-            # Fallback: append context to new command
             context_str = " | ".join(enhanced_parts)
             return f"{new_command} [Context: {context_str}]"
         
-        # Not a follow-up - just add hints
         hints = []
         
         if 'app' in context.entities:

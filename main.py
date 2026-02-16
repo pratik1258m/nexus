@@ -26,14 +26,12 @@ class NexusAppWindow(NexusMainWindow):
         self.pause_event=pause_event
         self.status_changed.connect(self._update_ui_status)
         
-        # Stop the simulation timer so the AI controls the status
         if hasattr(self, 'status_timer'):
             self.status_timer.stop()
             
         logger.info("Nexus UI initialized and linked to AI core")
 
     def _update_ui_status(self, status, command):
-        # Map AI status to UI colors
         color=P_PRIMARY
         if "Ready" in status or "✨" in status:
             color=P_SUCCESS
@@ -42,11 +40,10 @@ class NexusAppWindow(NexusMainWindow):
         elif "Processing" in status or "🔄" in status:
             color=P_PROCESSING
         elif "Error" in status or "❌" in status:
-            color=QColor("#FFADAD") # Warning color
+            color=QColor("#FFADAD")
             
         self.status_badge.set_status(status, color)
         
-        # Add command to status text if present
         if command:
             logger.info(f"AI UI Status Update: {status} | Command: {command}")
 
@@ -83,14 +80,12 @@ def nexus_loop(pause_event, registry, args, gui_window=None):
     
     loop_logger=get_logger('nexus_loop')
     
-    # Initialize state machine and memory
     config = get_config()
     state_manager = StateManager()
     memory_manager = MemoryManager(ttl_seconds=config.state_machine.memory_ttl_seconds)
     nexus = NexusEngine(registry)
     interpreter = CommandInterpreter(registry, memory_manager)
     
-    # Startup message
     if args.text:
         loop_logger.info('Nexus AI Online. Ready for command (Text Mode).')
         print('NEXUS: Nexus AI Online. Ready for command (Text Mode).')
@@ -112,18 +107,15 @@ def nexus_loop(pause_event, registry, args, gui_window=None):
                 print('NEXUS: Stopped.')
     
     while True:
-        # Check pause event
         if pause_event.is_set():
             time.sleep(0.5)
             continue
         
-        # Ensure system is IDLE before accepting commands
         if not state_manager.is_idle:
             loop_logger.warning(f"System busy (state: {state_manager.current_state.name})")
             time.sleep(0.5)
             continue
         
-        # Get user input
         if args.text:
             try:
                 user_query=input('YOU: ').lower()
@@ -140,20 +132,17 @@ def nexus_loop(pause_event, registry, args, gui_window=None):
         if user_query == 'none' or not user_query:
             continue
         
-        # Handle quit command
         if 'quit' in user_query or 'exit' in user_query:
             loop_logger.info('Shutdown command received')
             if not args.text:
                 speak('Goodbye.')
             break
         
-        # Handle abort command
         if 'stop' in user_query or 'abort' in user_query:
             handle_abort()
             continue
         
         try:
-            # STATE: IDLE → THINKING
             if not state_manager.transition(NexusState.THINKING, "command received"):
                 loop_logger.error("Failed to transition to THINKING")
                 continue
@@ -161,58 +150,68 @@ def nexus_loop(pause_event, registry, args, gui_window=None):
             if gui_window:
                 gui_window.status_changed.emit("🧠 Thinking...", user_query[:50])
             
-            # Interpret command (local or API)
-            intent = interpreter.interpret(user_query)
-            loop_logger.debug(f"Intent: {intent.action} (confidence: {intent.confidence:.2f})")
+            intents = interpreter.interpret(user_query)
             
-            # STATE: THINKING → EXECUTING
-            if not state_manager.transition(NexusState.EXECUTING, f"executing {intent.action}"):
-                loop_logger.error("Failed to transition to EXECUTING")
-                state_manager.force_idle("transition failure")
-                continue
-            
-            if gui_window:
-                gui_window.status_changed.emit("⚡ Executing...", intent.action)
-            
-            # Execute command (local-first if enabled)
-            response = None
-            
-            if config.state_machine.enable_local_execution and intent.is_high_confidence:
-                # LOCAL EXECUTION (no API call)
-                loop_logger.info(f"Local execution: {intent.action}")
-                response = nexus.execute_local(intent)
-            else:
-                # API EXECUTION (with context)
-                enhanced_query = memory_manager.build_context_prompt(user_query)
-                loop_logger.info(f"API execution: {enhanced_query[:50]}...")
-                response = nexus.run_conversation(enhanced_query)
-            
-            # Update memory with result
-            memory_manager.add_context(
-                command=user_query,
-                result=response,
-                entities=intent.params if intent.action != 'api_required' else None
-            )
-            
-            # STATE: EXECUTING → COMPLETED
-            if not state_manager.transition(NexusState.COMPLETED, "task completed"):
-                loop_logger.error("Failed to transition to COMPLETED")
-                state_manager.force_idle("transition failure")
-                continue
-            
-            # Output response (minimal)
-            if pause_event.is_set():
-                state_manager.transition(NexusState.IDLE)
-                continue
-            
-            if response:
-                if args.text:
-                    print(f'NEXUS: {response}')
+            for intent in intents:
+                loop_logger.debug(f"Processing Intent: {intent.action} (confidence: {intent.confidence:.2f})")
+                
+                # If we are in IDLE (e.g. 2nd command), go to THINKING first
+                if state_manager.current_state == NexusState.IDLE:
+                    if not state_manager.transition(NexusState.THINKING, "processing next sub-command"):
+                        loop_logger.error("Failed to transition to THINKING")
+                        break
+                        
+                if not state_manager.transition(NexusState.EXECUTING, f"executing {intent.action}"):
+                    loop_logger.error("Failed to transition to EXECUTING")
+                    state_manager.force_idle("transition failure")
+                    break
+                
+                if gui_window:
+                    gui_window.status_changed.emit("⚡ Executing...", intent.action)
+                
+                response = None
+                
+                if config.state_machine.enable_local_execution and intent.is_high_confidence:
+                    loop_logger.info(f"Local execution: {intent.action}")
+                    response = nexus.execute_local(intent)
                 else:
-                    speak(response)
+                    # For API execution, we use the original sub-command or full query?
+                    # valid point: if it's "api_required", intent.original_command holds the sub-command
+                    query_to_use = intent.original_command if intent.original_command else user_query
+                    enhanced_query = memory_manager.build_context_prompt(query_to_use)
+                    loop_logger.info(f"API execution: {enhanced_query[:50]}...")
+                    response = nexus.run_conversation(enhanced_query)
+                
+                memory_manager.add_context(
+                    command=user_query,
+                    result=response,
+                    entities=intent.params if intent.action != 'api_required' else None
+                )
+                
+                if not state_manager.transition(NexusState.COMPLETED, "task completed"):
+                    loop_logger.error("Failed to transition to COMPLETED")
+                    state_manager.force_idle("transition failure")
+                    break
+                
+                if pause_event.is_set():
+                    state_manager.transition(NexusState.IDLE)
+                    break
+                
+                if response:
+                    if args.text:
+                        print(f'NEXUS: {response}')
+                    else:
+                        speak(response)
+                        
+                # Small delay and reset state for next command
+                import time
+                time.sleep(0.5)
+                # Must go back to IDLE to allow transition to EXECUTING again
+                state_manager.transition(NexusState.IDLE, "ready for next sub-command")
             
-            # STATE: COMPLETED → IDLE
-            state_manager.transition(NexusState.IDLE, "ready for next command")
+            # Ensure we end in IDLE (already done if loop finished normally)
+            if not state_manager.is_idle:
+                state_manager.transition(NexusState.IDLE, "ready for next command")
             
             if gui_window:
                 gui_window.status_changed.emit("✨ Ready", "")
@@ -223,7 +222,6 @@ def nexus_loop(pause_event, registry, args, gui_window=None):
         except Exception as e:
             loop_logger.error(f'Main loop error: {e}', exc_info=args.debug)
             
-            # STATE: ERROR → IDLE
             state_manager.transition(NexusState.ERROR, str(e))
             
             if args.text:

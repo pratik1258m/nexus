@@ -10,6 +10,7 @@
 google-generativeai>=0.8.3    # Google Gemini AI API (Legacy)
 google-genai>=0.3.0            # Google Gemini AI API (New SDK)
 python-dotenv>=1.0.1          # Environment variable management
+groq>=1.0.0                   # Groq API client
 
 # ----------------------------------------------------------------------------
 # Voice & Audio

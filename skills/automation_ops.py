@@ -116,21 +116,16 @@ class AutomationSkill(Skill):
 
     def type_text(self, text: str, interval: float = 0.05) -> str:
         try:
-            # For long text, code blocks, or special characters, use clipboard paste
-            # This is more reliable than pyautogui.write()
             if len(text) > 100 or '\n' in text or any(char in text for char in ['`', '{', '}', '[', ']', '"', "'"]):
                 import pyperclip
                 
-                # Copy to clipboard
                 pyperclip.copy(text)
                 
-                # Paste using Cmd+V (macOS)
                 pyautogui.hotkey('command', 'v')
                 time.sleep(0.3)
                 
                 return json.dumps({"status": "success", "message": f"Pasted {len(text)} characters via clipboard"})
             else:
-                # For short simple text, use direct typing
                 pyautogui.write(text, interval=interval)
                 return json.dumps({"status": "success", "message": f"Typed: {text[:50]}"})
         except Exception as e:

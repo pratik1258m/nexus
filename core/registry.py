@@ -11,7 +11,7 @@ class SkillRegistry:
 
     def __init__(self):
         self.skills: Dict[str, Skill] = {}
-        self.skill_classes: Dict[str, tuple] = {}  # module_name -> (class_obj, context)
+        self.skill_classes: Dict[str, tuple] = {}
         self.tools_schema: List[Dict[str, Any]] = []
         self.functions: Dict[str, Callable] = {}
         self._loaded_modules = set()
@@ -38,14 +38,11 @@ class SkillRegistry:
                 for name, obj in inspect.getmembers(module):
                     if inspect.isclass(obj) and issubclass(obj, Skill
                         ) and obj is not Skill:
-                        # Extract tools schema without instantiating
                         temp_instance = obj()
                         self.tools_schema.extend(temp_instance.get_tools())
                         
-                        # Store class for lazy instantiation
                         self.skill_classes[temp_instance.name] = (obj, context)
                         
-                        # Map functions to a lazy-loading wrapper
                         for func_name in temp_instance.get_functions().keys():
                             self.functions[func_name] = self._make_lazy_wrapper(temp_instance.name, func_name)
                         

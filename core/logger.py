@@ -29,7 +29,6 @@ class NexusLogger:
         self.log_dir=Path.home() / '.nexus' / 'logs'
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create formatters
         self.detailed_formatter=logging.Formatter(
             '%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
@@ -39,12 +38,10 @@ class NexusLogger:
             '%(levelname)-8s | %(message)s'
         )
         
-        # Setup root logger
         self.root_logger=logging.getLogger('nexus')
         self.root_logger.setLevel(logging.DEBUG)
         self.root_logger.handlers.clear()
         
-        # File handler with rotation (10MB max, keep 5 backups)
         log_file=self.log_dir / f'nexus_{datetime.now().strftime("%Y%m%d")}.log'
         file_handler=RotatingFileHandler(
             log_file,
@@ -56,7 +53,6 @@ class NexusLogger:
         file_handler.setFormatter(self.detailed_formatter)
         self.root_logger.addHandler(file_handler)
         
-        # Console handler (only INFO and above)
         console_handler=logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
         console_handler.setFormatter(self.simple_formatter)
@@ -93,7 +89,6 @@ class NexusLogger:
             if isinstance(handler, logging.StreamHandler) and not isinstance(handler, RotatingFileHandler):
                 self.root_logger.removeHandler(handler)
 
-# Global logger instance
 _logger_instance=NexusLogger()
 
 def get_logger(name: str) -> logging.Logger:

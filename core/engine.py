@@ -34,12 +34,16 @@ class NexusEngine:
         
         self.system_instruction=(
             'You are Nexus AI, a disciplined assistant created by Pratik Mishra. '
-            'Execute tasks precisely with minimal response. '
+            'Execute tasks precisely with minimal response but MAXIMUM quality. '
             'Rules: '
             '1. RESPOND WITH SINGLE-WORD CONFIRMATIONS ONLY: "Done.", "Opened.", "Sent.", "Error." '
             '2. Do NOT explain what you are doing unless explicitly asked "why" or "how". '
             '3. Use ONLY provided tools - never simulate functions. '
-            '4. Execute exactly what is asked - do not add extra steps. '
+            '4. Execute exactly what is asked, but ensure solutions are OPTIMAL and COMPLETED. '
+            '   - For HTML, ALWAYS include modern CSS and interactive JS logic. '
+            '   - For Python, ensure efficient, clean, and error-free code. '
+            '   - IF context shows an app/editor is open (e.g. "notepad was recently opened"), use `type_code` to type directly. '
+            '     ONLY use `generate_code_file` if the user explicitly asks to "save" or "create a file". '
             '5. CRITICAL: When sending messages, pass the COMPLETE message text - never truncate. '
             '6. For greetings: "Hello." For thanks: "Welcome." '
             'Be calm, synchronous, and human-like. Respond like a disciplined system, not a chatbot.'
@@ -51,12 +55,13 @@ class NexusEngine:
                 logger.debug(f"Attempting Gemini API call for query: {user_prompt[:50]}...")
                 return self._run_gemini_workflow(user_prompt)
             except Exception as e:
-                error_msg=str(e).lower()
-                logger.warning(f"Gemini API error: {e}")
-                if ('quota' in error_msg or 'resource_exhausted' in
-                    error_msg or '429' in error_msg):
-                    logger.info('Gemini quota exceeded. Falling back to Groq...')
+                error_str = str(e)
+                if "429" in error_str or "Resource has been exhausted" in error_str:
+                    logger.warning("Gemini Free Tier rate limit reached.")
+                    logger.info("🔄 Seamlessly switching to Groq (Llama 3) fallback...")
+                    return self._run_groq_workflow(user_prompt)
                 else:
+                    logger.warning(f"Gemini API error: {e}")
                     logger.info('Gemini encountered an error. Falling back to Groq...')
         
         if self.groq_client:
@@ -106,11 +111,22 @@ class NexusEngine:
 
     def _run_groq_workflow(self, user_prompt: str) -> str:
         import re
-        messages=[{'role': 'system', 'content': self.system_instruction},
-            {'role': 'user', 'content': user_prompt}]
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are Nexus AI, an advanced and intelligent assistant. "
+                    "Your outputs must be top-notch, professional, and precise. "
+                    "When writing content (emails, letters, code), produce the FINAL polished version. "
+                    "Do NOT use placeholders like '[Your Name]'—infer context or use generic but professional fillers. "
+                    "If writing code, provide only the code in markdown blocks. "
+                    "Be concise but thorough."
+                )
+            },
+            {"role": "user", "content": user_prompt}
+        ]
         tools_schema=self.registry.get_tools_schema()
         
-        # Limit tokens to reduce hallucinations and costs
         completion_kwargs={
             'model': self.groq_model, 
             'messages': messages,
@@ -169,18 +185,50 @@ class NexusEngine:
                 logger.warning('Groq tool calling failed. Retrying as text-only...')
                 completion_kwargs.pop('tools', None)
                 completion_kwargs.pop('tool_choice', None)
-                response=self.groq_client.chat.completions.create(**
-                    completion_kwargs)
+                
+                # Instruct model to provide code cleanly if generic text
+                messages.append({
+                    'role': 'system', 
+                    'content': 'Tool execution failed. Please write the requested code directly in a markdown block. '
+                               'Include the filename in a comment at the top, e.g. "# filename: script.py".'
+                })
+                
+                response=self.groq_client.chat.completions.create(**completion_kwargs)
             else:
                 raise e
 
         response_message=response.choices[0].message
+        content = response_message.content
         
-        # Check for hallucinated tags in the content even if tool_calls is empty
-        if response_message.content:
-            recovered=recover_hallucinations(response_message.content)
+        if content:
+            recovered=recover_hallucinations(content)
             if recovered:
                 return recovered
+            
+            # Check for code blocks if text-only fallback was used or tools failed
+                # Intelligent Fallback: Check if context implies typing
+                logger.info(f"DEBUG: Checking typing context. Prompt: {user_prompt[:100]}...")
+                if "was recently opened" in user_prompt or "type" in user_prompt.lower():
+                    logger.info("DEBUG: Context implies typing. Checking for code blocks.")
+                    import re
+                    # Extract first code block
+                    match = re.search(r'```(?:\w+)?\n(.*?)```', content, re.DOTALL)
+                    if match:
+                        logger.info("DEBUG: Code block match found.")
+                        code_content = match.group(1).strip()
+                        type_tool = self.registry.get_function('type_code')
+                        if type_tool:
+                            logger.info("DEBUG: Calling type_code tool.")
+                            type_tool(content=code_content)
+                            return "Typed code into active window."
+                        else:
+                            logger.error("DEBUG: type_code tool missing.")
+                    else:
+                        logger.info("DEBUG: No code block match in content.")
+
+                saved_file = self._extract_and_save_code(content)
+                if saved_file:
+                    return f"Created {saved_file}."
 
         if response_message.tool_calls:
             messages.append(response_message)
@@ -238,12 +286,14 @@ class NexusEngine:
         
         response_lower = api_response.lower()
         
-        # Error cases
         if any(word in response_lower for word in ['error', 'failed', 'cannot', 'unable', '❌']):
             return "Error."
         
-        # Success patterns
-        if 'open' in response_lower:
+        if 'typed' in response_lower:
+            return "Typed."
+        elif 'created' in response_lower:
+            return "Created."
+        elif 'open' in response_lower:
             return "Opened."
         elif 'close' in response_lower or 'quit' in response_lower:
             return "Closed."
@@ -259,8 +309,9 @@ class NexusEngine:
             return "Hello."
         elif any(word in response_lower for word in ['thank', 'welcome']):
             return "Welcome."
+        elif 'created' in response_lower:
+            return "Created."
         
-        # Default success
         return "Done."
     
     def execute_local(self, intent) -> str:
@@ -275,12 +326,10 @@ class NexusEngine:
         """
         from core.command_interpreter import CommandInterpreter
         
-        # Check for simple responses (no execution needed)
         simple_response = CommandInterpreter.get_response_for_simple_action(None, intent.action)
         if simple_response:
             return simple_response
         
-        # Execute function
         function = self.registry.get_function(intent.action)
         if not function:
             logger.error(f"Function not found: {intent.action}")
@@ -293,3 +342,64 @@ class NexusEngine:
         except Exception as e:
             logger.error(f"Local execution error: {e}")
             return "Error."
+
+    def _extract_and_save_code(self, text: str) -> str:
+        """
+        Extract code generated in text-only mode and save to file
+        
+        Args:
+            text: Response text containing markdown code blocks
+            
+        Returns:
+            Filename if saved, None otherwise
+        """
+        import re
+        
+        # Regex to find code blocks: ```language\ncode```
+        # Captures: 1=language (optional), 2=code
+        matches = re.findall(r'```(\w*)\n(.*?)```', text, re.DOTALL)
+        
+        if not matches:
+            return None
+            
+        saved_files = []
+        
+        for lang, code in matches:
+            lines = code.strip().split('\n')
+            
+            # Try to find filename in first few lines
+            filename = None
+            for line in lines[:3]:
+                # Check for comment pattern # filename: ... or // filename: ...
+                file_match = re.search(r'(?:#|//|<!--)\s*filename:\s*([\w\-\.]+)', line, re.IGNORECASE)
+                if file_match:
+                    filename = file_match.group(1).strip()
+                    break
+            
+            if not filename:
+                # Generate fallback filename
+                import time
+                ext = 'txt'
+                if 'python' in lang or 'py' in lang: ext = 'py'
+                elif 'html' in lang: ext = 'html'
+                elif 'javascript' in lang or 'js' in lang: ext = 'js'
+                elif 'css' in lang: ext = 'css'
+                elif 'java' in lang: ext = 'java'
+                elif 'cpp' in lang: ext = 'cpp'
+                
+                filename = f"generated_{int(time.time())}.{ext}"
+            
+            try:
+                # Save to Documents/nexus
+                save_path = os.path.join(os.path.expanduser('~/Documents/nexus'), filename)
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                
+                with open(save_path, 'w') as f:
+                    f.write(code.strip())
+                    
+                logger.info(f"Saved generated code to {save_path}")
+                saved_files.append(filename)
+            except Exception as e:
+                logger.error(f"Failed to save generated code: {e}")
+                
+        return ", ".join(saved_files) if saved_files else None

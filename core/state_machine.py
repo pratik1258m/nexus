@@ -15,12 +15,12 @@ logger = get_logger(__name__)
 
 class NexusState(Enum):
     """Nexus AI states - strict sequential flow"""
-    IDLE = auto()           # Ready for new command
-    THINKING = auto()       # Interpreting command
-    EXECUTING = auto()      # Executing command/tool
-    COMPLETED = auto()      # Task completed successfully
-    ERROR = auto()          # Task failed
-    ABORTING = auto()       # Aborting current task
+    IDLE = auto()
+    THINKING = auto()
+    EXECUTING = auto()
+    COMPLETED = auto()
+    ERROR = auto()
+    ABORTING = auto()
 
 
 @dataclass
@@ -38,7 +38,6 @@ class StateManager:
     Ensures only one task executes at a time
     """
     
-    # Valid state transitions
     VALID_TRANSITIONS = {
         NexusState.IDLE: [NexusState.THINKING],
         NexusState.THINKING: [NexusState.EXECUTING, NexusState.ERROR, NexusState.ABORTING],
@@ -96,7 +95,6 @@ class StateManager:
                 )
                 return False
             
-            # Record transition
             transition = StateTransition(
                 from_state=self._current_state,
                 to_state=target_state,
@@ -108,7 +106,6 @@ class StateManager:
             if len(self._history) > self._max_history:
                 self._history.pop(0)
             
-            # Execute transition
             old_state = self._current_state
             self._current_state = target_state
             
@@ -117,7 +114,6 @@ class StateManager:
                 + (f" ({reason})" if reason else "")
             )
             
-            # Trigger callbacks
             self._trigger_callbacks(target_state)
             
             return True

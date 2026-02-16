@@ -30,26 +30,21 @@ class WhatsAppClient:
             self.driver=WhatsAppDriver.get_driver(browser=browser)
             self.wait=WebDriverWait(self.driver, 45)
         
-        # Navigate to WhatsApp Web if not already there
         if 'web.whatsapp.com' not in self.driver.current_url:
             logger.info("Navigating to WhatsApp Web...")
             self.driver.get('https://web.whatsapp.com')
             
-            # Wait for QR code scan or main interface
             logger.info("Waiting for WhatsApp Web to load (scan QR if needed)...")
             try:
-                # Wait for either search box (logged in) or QR code (not logged in)
                 self.wait.until(
                     lambda d: d.find_elements(By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]') or
                              d.find_elements(By.XPATH, '//canvas[@aria-label]')
                 )
                 
-                # If QR code is present, wait longer for scan
                 if self.driver.find_elements(By.XPATH, '//canvas[@aria-label]'):
                     logger.info("QR Code detected - Please scan with your phone")
                     print("\n📱 SCAN QR CODE: Open WhatsApp on your phone and scan the QR code in Safari\n")
                     
-                    # Wait up to 90 seconds for QR scan
                     self.wait=WebDriverWait(self.driver, 90)
                     self.wait.until(EC.presence_of_element_located(
                         (By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]')
@@ -62,7 +57,6 @@ class WhatsAppClient:
                 logger.error("Timeout waiting for WhatsApp Web to load")
                 raise Exception("WhatsApp Web failed to load. Please check your internet connection.")
             
-            # Reset wait to normal timeout
             self.wait=WebDriverWait(self.driver, 45)
         
         try:
@@ -92,19 +86,24 @@ class WhatsAppClient:
         try:
             logger.info(f"Searching for contact: {contact_name}")
             
-            # Find and click search box
-            search_box=self.wait.until(EC.presence_of_element_located(
-                (By.XPATH, '//div[@contenteditable="true"][@data-tab="3"]')
-            ))
+            logger.info("Waiting for search box...")
+            try:
+                search_box = self.wait.until(EC.presence_of_element_located(
+                    (By.XPATH, '//div[@contenteditable="true"][@data-tab="3"] | //div[@aria-label="Search input textbox"]')
+                ))
+            except TimeoutException:
+                 logger.warning("Standard search box not found, trying fallback...")
+                 search_box = self.driver.find_elements(By.XPATH, '//div[@contenteditable="true"]')[0]
+
             
-            # Clear any existing search
             search_box.click()
             time.sleep(0.5)
-            search_box.send_keys(Keys.CONTROL + 'a')
+            
+            modifier = Keys.COMMAND if self.os == 'macos' else Keys.CONTROL
+            search_box.send_keys(modifier + 'a')
             search_box.send_keys(Keys.BACKSPACE)
             time.sleep(0.5)
             
-            # Type contact name
             logger.debug(f"Typing in search box: {contact_name}")
             for char in contact_name:
                 search_box.send_keys(char)
@@ -112,8 +111,6 @@ class WhatsAppClient:
             
             time.sleep(2)
             
-            # Look for the contact in search results
-            # Try multiple XPath strategies
             contact_xpaths=[
                 f'//span[@title="{contact_name}"]',
                 f'//span[contains(@title, "{contact_name}")]',
@@ -132,13 +129,11 @@ class WhatsAppClient:
             
             if not contact_element:
                 logger.warning(f"Contact '{contact_name}' not found in search results")
-                # Try pressing Enter as fallback (opens first result)
                 logger.info("Trying to open first search result...")
                 search_box.send_keys(Keys.ENTER)
                 time.sleep(1.5)
                 return True
             
-            # Click on the contact
             logger.info(f"Clicking on contact: {contact_name}")
             contact_element.click()
             time.sleep(1.5)
@@ -168,7 +163,6 @@ class WhatsAppClient:
         try:
             logger.info(f"Sending message to: {phone_number_or_name} (Mode: {mode})")
             
-            # Try Native first if on macOS and mode is auto/native
             if self.os == 'macos' and mode in ['auto', 'native']:
                 try:
                     from .native_mac import open_whatsapp_native, send_message_simple
@@ -183,53 +177,65 @@ class WhatsAppClient:
                             logger.warning(f"Native automation failed: {result_msg}")
                             if mode == 'native':
                                 return result_msg
-                            # Fall through to web mode
                     else:
                         logger.warning("WhatsApp Desktop app not responding or not installed.")
                         if mode == 'native':
                             return "❌ WhatsApp Desktop app not available"
-                        # Fall through to web mode
                 except Exception as ne:
                     logger.error(f"Critical error in Native WhatsApp handler: {ne}", exc_info=True)
                     if mode == 'native':
                         return f"❌ Native WhatsApp automation error: {ne}"
-                    # Fall through to web mode
 
-            # Fallback to Web Mode
-            logger.info(f"Using Web Mode with {browser}")
-            self._ensure_driver(browser=browser)
+            if browser == 'chrome' and self.os == 'macos':
+                pass
+            elif self.os == 'macos' and not browser:
+                 logger.info("Defaulting to Safari on macOS for better stability")
+                 browser = 'safari'
             
-            # Search for and open the contact
+            logger.info(f"Using Web Mode with {browser}")
+            try:
+                self._ensure_driver(browser=browser)
+            except Exception as driver_error:
+                if 'Allow remote automation' in str(driver_error):
+                    return (
+                        "❌ Safari automation not enabled.\n"
+                        "Quick setup: Safari → Preferences → Advanced → Show Develop menu\n"
+                        "Then: Safari → Develop → Allow Remote Automation"
+                    )
+                raise
+            
             if not self._search_contact(phone_number_or_name):
                 return f"❌ Failed to find contact: {phone_number_or_name}"
             
-            # Wait for message input box to be available
             logger.info("Waiting for message input box...")
-            message_box=self.wait.until(EC.presence_of_element_located(
-                (By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')
-            ))
+            try:
+                message_box=self.wait.until(EC.presence_of_element_located(
+                    (By.XPATH, '//div[@contenteditable="true"][@data-tab="10"] | //div[@aria-label="Type a message"]')
+                ))
+            except TimeoutException:
+                logger.warning("Standard message box not found, trying fallback...")
+                editables = self.driver.find_elements(By.XPATH, '//div[@contenteditable="true"]')
+                if len(editables) >= 2:
+                    message_box = editables[-1]
+                else:
+                    raise Exception("Message input box not found")
             
             message_box.click()
             time.sleep(0.3)
             
             logger.info(f"Sending message: {message[:50]}{'...' if len(message) > 50 else ''}")
             
-            # For long messages, code blocks, or special formatting, use clipboard paste
-            # This is more reliable than send_keys for complex content
             if len(message) > 100 or '\n' in message or any(char in message for char in ['`', '{', '}', '[', ']']):
                 logger.info("Using clipboard paste for complex message")
                 import pyperclip
                 from selenium.webdriver.common.action_chains import ActionChains
                 
-                # Copy message to clipboard
                 pyperclip.copy(message)
                 
-                # Paste using keyboard shortcut (Cmd+V on macOS)
                 actions = ActionChains(self.driver)
                 actions.key_down(Keys.COMMAND).send_keys('v').key_up(Keys.COMMAND).perform()
                 time.sleep(0.5)
             else:
-                # For short simple messages, send_keys is fine
                 message_box.send_keys(message)
                 time.sleep(0.3)
             

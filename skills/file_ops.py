@@ -15,7 +15,7 @@ class FileSkill(Skill):
             'description':
             'Create, read, write, or append to files on the Desktop.',
             'parameters': {'type': 'object', 'properties': {'action': {
-            'type': 'string', 'enum': ['read', 'write', 'create', 'append']
+            'type': 'string', 'enum': ['read', 'write', 'create', 'append', 'delete']
             }, 'filename': {'type': 'string'}, 'content': {'type': 'string'
             }}, 'required': ['action', 'filename']}}}]
 
@@ -45,6 +45,12 @@ class FileSkill(Skill):
                     return json.dumps({'status': 'success', 'message':
                         f'Updated {filename}.'})
                 else:
-                    return json.dumps({'error': 'File not found to append.'})
+                    return json.dumps({'error': 'File not found.'})
+            elif action == 'delete':
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    return json.dumps({'status': 'success', 'message': f'Deleted {filename}.'})
+                else:
+                    return json.dumps({'error': 'File not found.'})
         except Exception as e:
             return json.dumps({'error': str(e)})

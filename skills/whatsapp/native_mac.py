@@ -37,18 +37,14 @@ def send_message_simple(contact_name: str, message: str):
     Send message using whatsapp:// URL scheme.
     This is the most reliable method.
     """
-    # URL encode the contact name and message
     encoded_contact = urllib.parse.quote(contact_name)
     
-    # Use whatsapp://send?text= to open chat with pre-filled message
     url = f"whatsapp://send?text={encoded_contact}"
     
     try:
-        # Open WhatsApp with the contact
         subprocess.run(['open', url], check=True)
-        time.sleep(3.0)  # Wait for WhatsApp to open the chat
+        time.sleep(3.0)
         
-        # Now paste and send the actual message
         escaped_message = message.replace('"', '\\"').replace('\\', '\\\\')
         
         script = f'''

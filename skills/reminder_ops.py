@@ -74,7 +74,6 @@ class ReminderSkill(Skill):
 
     def add_reminder(self, text: str, time_str: str) -> str:
         try:
-            # Simple check for HH:MM format
             datetime.strptime(time_str, '%H:%M')
             reminder = {
                 'text': text,
@@ -103,4 +102,4 @@ class ReminderSkill(Skill):
                     speak(f"Excuse me, sir. You have a reminder: {r['text']}")
                     r['notified'] = True
                     self._save_reminders()
-            time.sleep(30) # Check every 30 seconds
+            time.sleep(30)

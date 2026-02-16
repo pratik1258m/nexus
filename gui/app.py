@@ -10,7 +10,6 @@ from PyQt6.QtCore import Qt, QTimer, QPointF, QRectF, QEasingCurve, QPropertyAni
 from PyQt6.QtGui import (QPainter, QColor, QPen, QBrush, QRadialGradient, 
                         QLinearGradient, QFont, QFontDatabase, QPixmap, QPainterPath)
 
-# Professional color palette with depth and accessibility
 P_BG_DARK = QColor("#0A0E14")
 P_BG_DEEP = QColor("#070A0F")
 P_PRIMARY = QColor("#A0C4FF")
@@ -28,39 +27,33 @@ class BreathingStar:
         self.x = random.uniform(0, width)
         self.y = random.uniform(0, height)
         self.base_size = random.uniform(0.6, 2.8)
-        self.depth = random.uniform(0.1, 1.0)  # 0.1=near, 1.0=far
+        self.depth = random.uniform(0.1, 1.0)
         self.speed = 0.002 + (0.015 * (1.0 - self.depth))
         self.twinkle_speed = random.uniform(0.8, 1.5)
         self.twinkle_offset = random.uniform(0, math.pi * 2)
-        self.hue = random.uniform(200, 280)  # Blue to purple spectrum
+        self.hue = random.uniform(200, 280)
         self.saturation = 0.3 + (0.7 * self.depth)
         self.base_brightness = 0.4 + (0.6 * self.depth)
         
     def update(self, time, width, height):
-        # Horizontal drift with wrap-around
         self.x = (self.x + self.speed * 150) % width
         
-        # Subtle vertical drift for organic movement
         self.y += math.sin(time * self.twinkle_speed + self.twinkle_offset) * 0.15 * self.depth
         
-        # Keep within bounds with soft bounce
         if self.y < 0:
             self.y = 0
         elif self.y > height:
             self.y = height
             
     def get_color(self, time):
-        # Pulsating brightness with depth-based variation
         pulse = (math.sin(time * self.twinkle_speed + self.twinkle_offset) + 1) * 0.5
         brightness = self.base_brightness + (pulse * 0.3 * self.depth)
         
-        # Create HSL color with subtle hue shift
         hue_shift = math.sin(time * 0.3) * 5
         h = (self.hue + hue_shift) % 360
         s = self.saturation
         v = min(1.0, brightness * 1.2)
         
-        # Convert HSL to RGB
         c = v * s
         x = c * (1 - abs((h / 60) % 2 - 1))
         m = v - c
@@ -88,25 +81,20 @@ class BreathingStarfield(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         
-        # Performance optimization
         self.setUpdatesEnabled(True)
         self.setMinimumWidth(300)
         
-        # Initialize stars with depth layers
         self.stars = []
         self.nexus_clouds = []
         self.time = 0.0
         
-        # Pre-generate cosmic clouds for atmospheric depth
         self._generate_nexus_clouds()
         
-        # Animation timer (60 FPS)
         self.timer = QTimer(self)
-        self.timer.setInterval(16)  # ~60 FPS
+        self.timer.setInterval(16)
         self.timer.timeout.connect(self._animate)
         self.timer.start()
         
-        # Subtle background glow gradient
         self._create_background_gradients()
         
     def _generate_nexus_clouds(self):
@@ -134,20 +122,17 @@ class BreathingStarfield(QWidget):
         width = self.width()
         height = self.height()
         
-        # Lazy initialization of stars based on actual size
         if not self.stars and width > 0 and height > 0:
             self._initialize_stars(width, height)
         
-        # Update star positions
         for star in self.stars:
             star.update(self.time, width, height)
         
-        self.update()  # Trigger repaint
+        self.update()
     
     def _initialize_stars(self, width, height):
         """Generate stars with proper distribution and depth layers"""
         self.stars = []
-        # More stars for larger canvases (density-based)
         star_count = max(120, int(width * height / 1200))
         
         for _ in range(star_count):
@@ -159,13 +144,11 @@ class BreathingStarfield(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         
-        # Paint cosmic background
         painter.fillRect(self.rect(), self.bg_gradient)
         
         width = self.width()
         height = self.height()
         
-        # Paint cosmic clouds (atmospheric depth)
         for cloud in self.nexus_clouds:
             x = cloud['pos'].x() * width
             y = cloud['pos'].y() * height
@@ -180,13 +163,10 @@ class BreathingStarfield(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(QPointF(x, y), size, size)
         
-        # Paint stars with depth-based rendering
         for star in self.stars:
-            # Size scales with depth (closer stars are larger/brighter)
             size = star.base_size * (1.2 + 0.8 * (1.0 - star.depth))
             color = star.get_color(self.time)
             
-            # Add subtle glow for brighter stars
             if star.depth > 0.7 and size > 1.8:
                 glow_size = size * 2.5
                 radial = QRadialGradient(star.x, star.y, glow_size)
@@ -198,12 +178,10 @@ class BreathingStarfield(QWidget):
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(QPointF(star.x, star.y), glow_size, glow_size)
             
-            # Draw the star itself
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(color))
             painter.drawEllipse(QPointF(star.x, star.y), size * 0.5, size * 0.5)
         
-        # Paint subtle vignette for cinematic framing
         vignette = QRadialGradient(width/2, height/2, max(width, height) * 0.7)
         vignette.setColorAt(0.0, QColor(0, 0, 0, 0))
         vignette.setColorAt(0.85, QColor(0, 0, 0, 0))
@@ -216,7 +194,6 @@ class BreathingStarfield(QWidget):
         """Reinitialize stars when size changes significantly"""
         super().resizeEvent(event)
         if self.width() > 0 and self.height() > 0:
-            # Only reinitialize if size changed substantially (>15%)
             if not hasattr(self, '_last_size') or \
                abs(self.width() - self._last_size[0]) > self._last_size[0] * 0.15 or \
                abs(self.height() - self._last_size[1]) > self._last_size[1] * 0.15:
@@ -240,7 +217,6 @@ class StatusBadge(QFrame):
         
         self.setObjectName("statusBadge")
         self.setStyleSheet("""
-            #statusBadge {
                 background: rgba(20, 25, 35, 0.7);
                 border-radius: 12px;
                 padding: 8px 16px;
@@ -252,12 +228,10 @@ class StatusBadge(QFrame):
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(10)
         
-        # Status indicator dot with glow effect
         self.dot = QWidget()
         self.dot.setFixedSize(12, 12)
         self.dot.setStyleSheet("background: transparent; border-radius: 6px;")
         
-        # Status label
         self.label = QLabel(status_text)
         self.label.setFont(QFont("SF Pro Display, Segoe UI, Roboto, Helvetica, Arial", 11, QFont.Weight.Medium))
         self.label.setStyleSheet("color: #E2E8F0;")
@@ -266,7 +240,6 @@ class StatusBadge(QFrame):
         layout.addWidget(self.label)
         layout.addStretch()
         
-        # Glow animation
         self.glow_timer = QTimer(self)
         self.glow_timer.setInterval(40)
         self.glow_timer.timeout.connect(self._update_glow)
@@ -281,7 +254,6 @@ class StatusBadge(QFrame):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # Draw animated glow behind status dot
         glow_radius = 18 + (self.glow_intensity * 6)
         radial = QRadialGradient(18, 14, glow_radius)
         radial.setColorAt(0.0, self.status_color)
@@ -292,7 +264,6 @@ class StatusBadge(QFrame):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(QRectF(6 - glow_radius/2, 14 - glow_radius/2, glow_radius, glow_radius))
         
-        # Draw status dot
         painter.setBrush(QBrush(self.status_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(12, 10, 8, 8)
@@ -312,38 +283,37 @@ class NexusMainWindow(QMainWindow):
         self.setWindowTitle("Nexus AI • System Monitor")
         self.setMinimumSize(1000, 700)
         
-        # Apply application-wide stylesheet
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #0A0E14;
+                background-color:
             }
-            QLabel#titleLabel {
+            QLabel
                 font-size: 28px;
                 font-weight: 600;
-                color: #E2E8F0;
+                color:
                 letter-spacing: -0.5px;
             }
-            QLabel#subtitleLabel {
+            QLabel
                 font-size: 16px;
-                color: #A0AEC0;
+                color:
                 margin-top: 4px;
             }
-            QLabel#metricValue {
+            QLabel
                 font-size: 32px;
                 font-weight: 700;
-                color: #A0C4FF;
+                color:
                 margin: 8px 0;
             }
-            QLabel#metricLabel {
+            QLabel
                 font-size: 14px;
-                color: #718096;
+                color:
             }
-            QWidget#controlPanel {
+            QWidget
                 background: rgba(20, 28, 40, 0.85);
                 border-radius: 20px;
                 border: 1px solid rgba(100, 130, 180, 0.2);
             }
-            QWidget#metricCard {
+            QWidget
                 background: rgba(30, 38, 55, 0.7);
                 border-radius: 16px;
                 padding: 16px;
@@ -351,29 +321,24 @@ class NexusMainWindow(QMainWindow):
             }
         """)
         
-        # Central widget layout
         central_widget = QWidget()
         main_layout = QHBoxLayout(central_widget)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(24)
         
-        # Left panel: Starfield visualization
         left_panel = QWidget()
         left_panel.setFixedWidth(360)
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Starfield with overlay status
         self.starfield = BreathingStarfield()
         self.starfield.setMinimumHeight(500)
         
-        # Status overlay container
         overlay_container = QWidget()
         overlay_container.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         overlay_layout = QVBoxLayout(overlay_container)
         overlay_layout.setContentsMargins(24, 32, 24, 24)
         
-        # Title and status
         title_label = QLabel("NEXUS AI SYSTEM")
         title_label.setObjectName("titleLabel")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -392,19 +357,16 @@ class NexusMainWindow(QMainWindow):
         overlay_layout.addWidget(self.status_badge, 0, Qt.AlignmentFlag.AlignCenter)
         overlay_layout.addStretch()
         
-        # Compose left panel
         left_layout.addWidget(self.starfield)
         left_layout.addWidget(overlay_container)
         left_layout.setAlignment(overlay_container, Qt.AlignmentFlag.AlignCenter)
         
-        # Right panel: Control dashboard
         right_panel = QWidget()
         right_panel.setObjectName("controlPanel")
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(28, 28, 28, 28)
         right_layout.setSpacing(24)
         
-        # Metrics row
         metrics_layout = QHBoxLayout()
         metrics_layout.setSpacing(20)
         
@@ -433,7 +395,6 @@ class NexusMainWindow(QMainWindow):
             card_layout.addWidget(title_label)
             metrics_layout.addWidget(card)
         
-        # System status details
         status_details = QWidget()
         status_layout = QVBoxLayout(status_details)
         status_layout.setSpacing(16)
@@ -470,18 +431,15 @@ class NexusMainWindow(QMainWindow):
         
         status_layout.insertWidget(0, detail_title)
         
-        # Compose right panel
         right_layout.addLayout(metrics_layout)
         right_layout.addWidget(status_details)
         right_layout.addStretch()
         
-        # Final composition
         main_layout.addWidget(left_panel)
         main_layout.addWidget(right_panel, 1)
         
         self.setCentralWidget(central_widget)
         
-        # Simulate status changes
         self._setup_status_simulation()
     
     def _setup_status_simulation(self):
@@ -501,10 +459,8 @@ class NexusMainWindow(QMainWindow):
         self.status_timer.start()
     
     def _cycle_status(self):
-        # Update metrics
         self._update_system_metrics()
         
-        # Don't cycle status if AI loop is handling it
         if hasattr(self, 'status_timer') and not hasattr(self, 'status_changed'):
             self.status_index = (self.status_index + 1) % len(self.status_sequence)
             text, color = self.status_sequence[self.status_index]
@@ -513,15 +469,12 @@ class NexusMainWindow(QMainWindow):
     def _update_system_metrics(self):
         """Fetch and update actual system metrics"""
         try:
-            # CPU
             cpu_percent = psutil.cpu_percent()
             self.metric_labels['cpu'].setText(f"{cpu_percent}%")
             
-            # RAM
             ram = psutil.virtual_memory()
             self.metric_labels['ram'].setText(f"{ram.percent}%")
             
-            # Uptime (System boot time)
             boot_time = psutil.boot_time()
             uptime_seconds = time.time() - boot_time
             hours, remainder = divmod(int(uptime_seconds), 3600)
@@ -546,12 +499,10 @@ class NexusMainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     
-    # Set application font
     font = QFont("SF Pro Display, Segoe UI, Roboto, Helvetica, Arial", 10)
     font.setHintingPreference(QFont.PreferFullHinting)
     app.setFont(font)
     
-    # Enable HiDPI support
     app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
     
     window = NexusMainWindow()
