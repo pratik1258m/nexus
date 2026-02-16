@@ -1,0 +1,87 @@
+# ============================================================================
+# NEXUS AI - Python Dependencies
+# ============================================================================
+# Install: pip install -r requirements.txt
+# Platform: macOS, Windows, Linux
+
+# ----------------------------------------------------------------------------
+# Core AI & API
+# ----------------------------------------------------------------------------
+google-generativeai>=0.8.3    # Google Gemini AI API (Legacy)
+google-genai>=0.3.0            # Google Gemini AI API (New SDK)
+python-dotenv>=1.0.1          # Environment variable management
+
+# ----------------------------------------------------------------------------
+# Voice & Audio
+# ----------------------------------------------------------------------------
+pyttsx3>=2.98                 # Cross-platform text-to-speech
+SpeechRecognition>=3.11.0     # Speech recognition library
+PyAudio>=0.2.14               # Audio I/O for microphone
+
+# ----------------------------------------------------------------------------
+# GUI & Visualization
+# ----------------------------------------------------------------------------
+PyQt6>=6.8.0                  # Qt6 GUI framework
+PyQt6-Qt6>=6.8.1              # Qt6 binaries
+PyQt6-sip>=13.9.1             # SIP bindings for PyQt6
+Pillow>=11.0.0                # Image processing
+
+# ----------------------------------------------------------------------------
+# Web Automation
+# ----------------------------------------------------------------------------
+selenium>=4.27.1              # Browser automation
+webdriver-manager>=4.0.2      # Automatic ChromeDriver management
+requests>=2.32.3              # HTTP requests
+
+# ----------------------------------------------------------------------------
+# System Automation
+# ----------------------------------------------------------------------------
+pyautogui>=0.9.54             # GUI automation (keyboard, mouse)
+pyperclip>=1.9.0              # Clipboard operations
+pytweening>=1.2.0             # Animation easing functions
+
+# ----------------------------------------------------------------------------
+# Computer Vision & AI (Optional - for detection_skill)
+# ----------------------------------------------------------------------------
+opencv-python>=4.10.0.84      # OpenCV for image/video processing
+torch>=2.5.1                  # PyTorch deep learning framework
+torchvision>=0.20.1           # PyTorch vision utilities
+ultralytics>=8.3.41           # YOLO object detection
+
+# ----------------------------------------------------------------------------
+# Platform-Specific Dependencies
+# ----------------------------------------------------------------------------
+# macOS only
+pyobjc-core>=10.3.1; platform_system=="Darwin"
+pyobjc-framework-Cocoa>=10.3.1; platform_system=="Darwin"
+pyobjc-framework-AVFoundation>=10.3.1; platform_system=="Darwin"
+
+# Windows only
+pywin32>=308; platform_system=="Windows"
+comtypes>=1.4.8; platform_system=="Windows"
+pycaw>=20240210; platform_system=="Windows"
+
+# Linux only
+python-xlib>=0.33; platform_system=="Linux"
+
+# ----------------------------------------------------------------------------
+# System Monitoring
+# ----------------------------------------------------------------------------
+psutil>=7.0.0
+
+
+# ============================================================================
+# Installation Notes
+# ============================================================================
+# 
+# Linux (Ubuntu/Debian):
+#   sudo apt-get install python3-pyaudio espeak portaudio19-dev
+#   pip install -r requirements.txt
+#
+# macOS:
+#   pip install -r requirements.txt
+#
+# Windows:
+#   pip install -r requirements.txt
+#
+# ============================================================================
