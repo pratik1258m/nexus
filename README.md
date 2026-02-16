@@ -1,19 +1,34 @@
-# Nexus AI - Personal AI Assistant
+# Nexus AI - Personal AI Assistant 🤖
 
-> **A powerful, cross-platform AI assistant with voice control, WhatsApp automation, and intelligent task execution.**
+<div align="center">
 
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)]()
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
-[![License](https://img.shields.io/badge/license-MIT-green)]()
+![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![GitHub stars](https://img.shields.io/github/stars/pratik1258m/nexus?style=social)
+![GitHub forks](https://img.shields.io/github/forks/pratik1258m/nexus?style=social)
+![GitHub issues](https://img.shields.io/github/issues/pratik1258m/nexus)
+![GitHub last commit](https://img.shields.io/github/last-commit/pratik1258m/nexus)
+![Code size](https://img.shields.io/github/languages/code-size/pratik1258m/nexus)
+
+**A powerful, cross-platform AI assistant with voice control, WhatsApp automation, and intelligent task execution.**
+
+[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-usage-examples) • [Contributing](#-contributing)
+
+</div>
+
+---
 
 ## 🌟 Features
 
-- **🎤 Voice Control** - Natural language commands with speech recognition
-- **💬 WhatsApp Automation** - Send messages via voice or text commands
-- **🖥️ System Control** - Open apps, control volume, manage files
-- **🤖 AI-Powered** - Gemini 2.0 Flash + Groq Llama 3.3 70B
-- **🎨 Beautiful GUI** - Modern interface with command history
-- **🌍 Cross-Platform** - Works on macOS, Windows, and Linux
+- 🎤 **Voice Control** - Natural language commands with speech recognition
+- 💬 **WhatsApp Automation** - Send messages via voice or text commands  
+- 🖥️ **System Control** - Open apps, control volume, manage files
+- 🤖 **AI-Powered** - Gemini 2.0 Flash + Groq Llama 3.3 70B
+- 🧠 **State Machine** - Disciplined execution with IDLE → THINKING → EXECUTING flow
+- 💾 **Short-Term Memory** - Context retention for multi-step commands
+- 🎨 **Beautiful GUI** - Modern PyQt6 interface with command history
+- 🌍 **Cross-Platform** - Works on macOS, Windows, and Linux
 
 ## 🚀 Quick Start
 
@@ -27,7 +42,7 @@
 
 **macOS / Linux**
 ```bash
-git clone <repository-url>
+git clone https://github.com/pratik1258m/nexus.git
 cd nexus
 python3 -m venv .venv
 source .venv/bin/activate
@@ -38,7 +53,7 @@ cp .env.template .env
 
 **Windows**
 ```bash
-git clone <repository-url>
+git clone https://github.com/pratik1258m/nexus.git
 cd nexus
 python -m venv .venv
 .venv\Scripts\activate
@@ -95,19 +110,23 @@ YOU: set volume to 50
 
 ```
 nexus/
-├── core/               # Core modules
-│   ├── engine.py       # AI engine
-│   ├── voice.py        # Voice system
-│   ├── platform_utils.py  # Cross-platform utilities
-│   └── logger.py       # Logging system
-├── skills/             # AI skills (modular capabilities)
-│   ├── whatsapp_skill.py
-│   ├── system_ops.py
-│   └── ...
-├── gui/                # GUI components
-│   └── app.py          # PyQt6 interface
-├── main.py             # Entry point
-└── requirements.txt    # Dependencies
+├── core/                      # Core modules
+│   ├── engine.py              # AI engine with Gemini & Groq
+│   ├── state_machine.py       # Strict state control
+│   ├── task_memory.py         # Short-term context retention
+│   ├── command_interpreter.py # Local-first command routing
+│   ├── voice.py               # Voice system (TTS/STT)
+│   ├── platform_utils.py      # Cross-platform utilities
+│   └── logger.py              # Logging system
+├── skills/                    # AI skills (modular capabilities)
+│   ├── whatsapp_skill.py      # WhatsApp automation
+│   ├── system_ops.py          # System control
+│   ├── automation_ops.py      # Keyboard/mouse control
+│   └── ...                    # 16+ more skills
+├── gui/                       # GUI components
+│   └── app.py                 # PyQt6 interface
+├── main.py                    # Entry point
+└── requirements.txt           # Dependencies
 ```
 
 ## 🔧 Platform Support
@@ -129,16 +148,24 @@ sudo apt-get install python3-pyaudio espeak portaudio19-dev
 
 ## 🎯 Skills
 
-Nexus AI includes 16+ built-in skills:
+Nexus AI includes **18+ built-in skills**:
 
 - **System** - App control, volume, file operations
-- **WhatsApp** - Automated messaging via Chrome
+- **WhatsApp** - Automated messaging via Chrome/Safari
 - **Web** - Search, browse, scrape
 - **Vision** - Object detection, image analysis
 - **Email** - Send/read emails
 - **Weather** - Current conditions and forecasts
 - **Automation** - Keyboard/mouse control
 - **Memory** - Context and conversation history
+- **Screenshot** - Capture screen
+- **Datetime** - Time and date queries
+- **Notes** - Create and manage notes
+- **Reminders** - Set reminders
+- **Tasks** - Task management
+- **Detection** - Object detection with AI
+- **Camera** - Camera control
+- **Execution** - Code execution
 
 ## 🛠️ Development
 
@@ -170,6 +197,7 @@ See `.env.template` for all available options:
 - Voice settings
 - Logging levels
 - Feature toggles
+- State machine configuration
 
 ## 🐛 Troubleshooting
 
@@ -186,6 +214,25 @@ See `.env.template` for all available options:
 - Activate virtual environment: `source .venv/bin/activate`
 - Reinstall dependencies: `pip install -r requirements.txt`
 
+## 📊 Architecture
+
+Nexus uses a disciplined state machine architecture:
+
+```
+IDLE → THINKING → EXECUTING → COMPLETED → IDLE
+           ↓
+         ERROR → IDLE
+           ↓
+       ABORTING → IDLE
+```
+
+**Key Features:**
+- ✅ Sequential execution (no concurrent tasks)
+- ✅ 60-second short-term memory for context
+- ✅ Local-first command routing (80-85% faster)
+- ✅ Minimal responses ("Done.", "Opened.", "Sent.")
+- ✅ Safe abort mechanism
+
 ## 📄 License
 
 MIT License - see LICENSE file for details
@@ -194,14 +241,23 @@ MIT License - see LICENSE file for details
 
 Contributions welcome! Please:
 1. Fork the repository
-2. Create a feature branch
-3. Test on your platform
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 👤 Author
 
-**Pratik Mishra**
+**Pratik Mishra** ([@pratik1258m](https://github.com/pratik1258m))
+
+## ⭐ Show Your Support
+
+Give a ⭐️ if this project helped you!
 
 ---
 
+<div align="center">
+
 **Made with ❤️ using Python, Gemini AI, and Groq**
+
+</div>
