@@ -217,9 +217,9 @@ class StatusBadge(QFrame):
         
         self.setObjectName("statusBadge")
         self.setStyleSheet("""
+            #statusBadge {
                 background: rgba(20, 25, 35, 0.7);
                 border-radius: 12px;
-                padding: 8px 16px;
                 border: 1px solid rgba(100, 130, 180, 0.3);
             }
         """)
@@ -285,38 +285,39 @@ class NexusMainWindow(QMainWindow):
         
         self.setStyleSheet("""
             QMainWindow {
-                background-color:
+                background-color: #05080F;
             }
-            QLabel
+            QLabel {
+                color: #E2E8F0;
+            }
+            #titleLabel {
                 font-size: 28px;
                 font-weight: 600;
-                color:
+                color: #A0C4FF;
                 letter-spacing: -0.5px;
             }
-            QLabel
+            #subtitleLabel {
                 font-size: 16px;
-                color:
+                color: #A0AEC0;
                 margin-top: 4px;
             }
-            QLabel
+            #metricValue {
                 font-size: 32px;
                 font-weight: 700;
-                color:
                 margin: 8px 0;
             }
-            QLabel
+            #metricLabel {
                 font-size: 14px;
-                color:
+                color: #A0AEC0;
             }
-            QWidget
+            #controlPanel {
                 background: rgba(20, 28, 40, 0.85);
                 border-radius: 20px;
                 border: 1px solid rgba(100, 130, 180, 0.2);
             }
-            QWidget
+            #metricCard {
                 background: rgba(30, 38, 55, 0.7);
                 border-radius: 16px;
-                padding: 16px;
                 border: 1px solid rgba(80, 100, 140, 0.2);
             }
         """)

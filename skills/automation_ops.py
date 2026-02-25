@@ -118,10 +118,18 @@ class AutomationSkill(Skill):
         try:
             if len(text) > 100 or '\n' in text or any(char in text for char in ['`', '{', '}', '[', ']', '"', "'"]):
                 import pyperclip
+                import platform
+                import os
                 
                 pyperclip.copy(text)
+                time.sleep(0.5)  # Synchronization buffer for the OS clipboard
                 
-                pyautogui.hotkey('command', 'v')
+                if platform.system() == 'Darwin':
+                    os.system('''osascript -e 'tell application "System Events" to keystroke "v" using command down' ''')
+                else:
+                    pyautogui.keyDown('ctrl')
+                    pyautogui.press('v')
+                    pyautogui.keyUp('ctrl')
                 time.sleep(0.3)
                 
                 return json.dumps({"status": "success", "message": f"Pasted {len(text)} characters via clipboard"})

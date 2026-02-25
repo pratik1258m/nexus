@@ -84,8 +84,6 @@ class CommandInterpreter:
         (r'^play\s+(.+)(?:\s+on\s+youtube)?$', 'play_on_youtube',
          lambda m: {'query': m.group(1).strip()}, 0.88),
         
-
-        
         (r'^(?:hi|hello|hey)(?:\s+nexus)?$', 'greeting',
          lambda m: {}, 0.99),
         

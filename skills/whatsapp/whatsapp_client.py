@@ -146,6 +146,70 @@ class WhatsAppClient:
         except Exception as e:
             logger.error(f"Error searching for contact: {e}")
             return False
+
+    def _send_safari_applescript(self, contact: str, message: str) -> bool:
+        """Automate existing Safari session using AppleScript to use existing cookies"""
+        import subprocess
+        
+        logger.info("Using AppleScript to control existing Safari session natively...")
+        
+        escaped_contact = contact.replace('"', '\\"').replace('\\', '\\\\')
+        escaped_message = message.replace('"', '\\"').replace('\\', '\\\\')
+        
+        script = f'''
+        tell application "Safari"
+            activate
+            set whatsapp_found to false
+            
+            repeat with w in windows
+                repeat with t in tabs of w
+                    if URL of t contains "web.whatsapp.com" then
+                        set whatsapp_found to true
+                        set current tab of w to t
+                        set index of w to 1
+                        exit repeat
+                    end if
+                end repeat
+                if whatsapp_found then exit repeat
+            end repeat
+            
+            if not whatsapp_found then
+                tell window 1
+                    set current tab to (make new tab with properties {{URL:"https://web.whatsapp.com"}})
+                end tell
+                delay 8
+            end if
+        end tell
+        
+        tell application "System Events"
+            tell process "Safari"
+                set frontmost to true
+                delay 1.5
+                
+                -- cmd+ctrl+/ opens WhatsApp web search on Mac
+                keystroke "/" using {{command down, control down}}
+                delay 1.5
+                
+                set the clipboard to "{escaped_contact}"
+                keystroke "v" using {{command down}}
+                delay 2.5
+                
+                key code 36
+                delay 1.5
+                
+                set the clipboard to "{escaped_message}"
+                keystroke "v" using {{command down}}
+                delay 1.5
+                
+                key code 36
+            end tell
+        end tell
+        '''
+        process = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate(timeout=45)
+        if process.returncode != 0:
+            raise Exception(f"Safari AppleScript failed: {stderr}")
+        return True
     
     def send_message(self, phone_number_or_name, message, browser='chrome', mode='web'):
         """
@@ -180,11 +244,11 @@ class WhatsAppClient:
                     else:
                         logger.warning("WhatsApp Desktop app not responding or not installed.")
                         if mode == 'native':
-                            return "❌ WhatsApp Desktop app not available"
+                            return "Error: WhatsApp Desktop app not available"
                 except Exception as ne:
                     logger.error(f"Critical error in Native WhatsApp handler: {ne}", exc_info=True)
                     if mode == 'native':
-                        return f"❌ Native WhatsApp automation error: {ne}"
+                        return f"Error: Native WhatsApp automation error"
 
             if browser == 'chrome' and self.os == 'macos':
                 pass
@@ -193,19 +257,27 @@ class WhatsAppClient:
                  browser = 'safari'
             
             logger.info(f"Using Web Mode with {browser}")
+            
+            if browser == 'safari' and self.os == 'macos':
+                try:
+                    self._send_safari_applescript(phone_number_or_name, message)
+                    success_msg = f"Message sent to {phone_number_or_name}"
+                    logger.info(success_msg)
+                    return success_msg
+                except Exception as e:
+                    error_msg = f"Error: Safari automation failed: {e}"
+                    logger.error(error_msg)
+                    return error_msg
+            
             try:
                 self._ensure_driver(browser=browser)
             except Exception as driver_error:
                 if 'Allow remote automation' in str(driver_error):
-                    return (
-                        "❌ Safari automation not enabled.\n"
-                        "Quick setup: Safari → Preferences → Advanced → Show Develop menu\n"
-                        "Then: Safari → Develop → Allow Remote Automation"
-                    )
+                    return "Error: Safari remote automation isn't enabled. Please enable it in the Safari Develop menu."
                 raise
             
             if not self._search_contact(phone_number_or_name):
-                return f"❌ Failed to find contact: {phone_number_or_name}"
+                return f"Error: Failed to find contact {phone_number_or_name}"
             
             logger.info("Waiting for message input box...")
             try:
@@ -243,20 +315,20 @@ class WhatsAppClient:
             message_box.send_keys(Keys.ENTER)
             time.sleep(1)
             
-            success_msg=f"✅ Message sent via WhatsApp Web to {phone_number_or_name}"
+            success_msg=f"Message sent to {phone_number_or_name}"
             logger.info(success_msg)
             return success_msg
             
         except TimeoutException as e:
-            error_msg=f"❌ Timeout: Could not load WhatsApp Web"
+            error_msg=f"Error: Timeout. Could not load WhatsApp Web."
             logger.error(error_msg)
             return error_msg
         except Exception as e:
             error_str=str(e)
             if "Remote Automation" in error_str:
-                error_msg="❌ Safari not configured. Enable Remote Automation in Safari settings."
+                error_msg="Error: Safari not configured. Enable Remote Automation in Safari settings."
             else:
-                error_msg=f"❌ Error: {error_str[:100]}"
+                error_msg=f"Error: {error_str[:60]}"
             logger.error(f"WhatsApp error: {error_str}")
             return error_msg
     

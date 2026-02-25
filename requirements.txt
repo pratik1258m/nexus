@@ -7,8 +7,7 @@
 # ----------------------------------------------------------------------------
 # Core AI & API
 # ----------------------------------------------------------------------------
-google-generativeai>=0.8.3    # Google Gemini AI API (Legacy)
-google-genai>=0.3.0            # Google Gemini AI API (New SDK)
+google-genai>=0.3.0           # Google Gemini AI API (New SDK)
 python-dotenv>=1.0.1          # Environment variable management
 groq>=1.0.0                   # Groq API client
 
@@ -25,30 +24,26 @@ PyAudio>=0.2.14               # Audio I/O for microphone
 PyQt6>=6.8.0                  # Qt6 GUI framework
 PyQt6-Qt6>=6.8.1              # Qt6 binaries
 PyQt6-sip>=13.9.1             # SIP bindings for PyQt6
-Pillow>=11.0.0                # Image processing
 
 # ----------------------------------------------------------------------------
-# Web Automation
+# Web Automation & Operations
 # ----------------------------------------------------------------------------
 selenium>=4.27.1              # Browser automation
 webdriver-manager>=4.0.2      # Automatic ChromeDriver management
 requests>=2.32.3              # HTTP requests
+pywhatkit>=5.4.0              # YouTube playback and web utilities
 
 # ----------------------------------------------------------------------------
 # System Automation
 # ----------------------------------------------------------------------------
 pyautogui>=0.9.54             # GUI automation (keyboard, mouse)
 pyperclip>=1.9.0              # Clipboard operations
-pytweening>=1.2.0             # Animation easing functions
 
 # ----------------------------------------------------------------------------
 # Computer Vision & AI (Optional - for detection_skill)
 # ----------------------------------------------------------------------------
-opencv-python>=4.10.0.84      # OpenCV for image/video processing
-torch>=2.5.1                  # PyTorch deep learning framework
-torchvision>=0.20.1           # PyTorch vision utilities
-ultralytics>=8.3.41           # YOLO object detection
-
+# Note: These modules are large. Install them via:
+# pip install -r requirements-vision.txt
 # ----------------------------------------------------------------------------
 # Platform-Specific Dependencies
 # ----------------------------------------------------------------------------

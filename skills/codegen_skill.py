@@ -53,6 +53,10 @@ class CodeGenSkill(Skill):
                             'content': {
                                 'type': 'string',
                                 'description': 'The complete code content to type.'
+                            },
+                            'app_name': {
+                                'type': 'string',
+                                'description': 'Optional. The name of the application to type into (e.g. "notepad", "vscode", "chrome").'
                             }
                         },
                         'required': ['content']
@@ -90,19 +94,48 @@ class CodeGenSkill(Skill):
             logger.error(f"Code generation error: {e}")
             return json.dumps({'status': 'error', 'message': str(e)})
 
-    def type_code(self, content: str) -> str:
+    def type_code(self, content: str, app_name: str = None) -> str:
         """Type provided code content into active window"""
         try:
+            import platform
+            import os
+            import time
+            system = platform.system()
+            
+            if app_name:
+                app_name_lower = app_name.lower()
+                app_mapping = {
+                    'notepad': {'Darwin': 'TextEdit', 'Windows': 'notepad', 'Linux': 'gedit'},
+                    'vscode': {'Darwin': 'Visual Studio Code', 'Windows': 'code', 'Linux': 'code'},
+                    'vs code': {'Darwin': 'Visual Studio Code', 'Windows': 'code', 'Linux': 'code'},
+                    'code': {'Darwin': 'Visual Studio Code', 'Windows': 'code', 'Linux': 'code'},
+                }
+                actual_app = app_name
+                if app_name_lower in app_mapping and system in app_mapping[app_name_lower]:
+                    actual_app = app_mapping[app_name_lower][system]
+                
+                if system == 'Darwin':
+                    os.system(f'''osascript -e 'tell application "{actual_app}" to activate' ''')
+                    time.sleep(0.5)
+            
             # Use clipboard for speed (pyautogui.write is too slow for code)
             import pyperclip
+            
             pyperclip.copy(content)
+            time.sleep(0.5)  # Synchronization buffer for the OS clipboard
             
             # Simulate paste
-            # On Mac: command+v, Windows/Linux: ctrl+v
+            # On Mac: AppleScript is most reliable, Windows/Linux: ctrl+v
             import platform
-            cmd_key = 'command' if platform.system() == 'Darwin' else 'ctrl'
+            import os
             
-            pyautogui.hotkey(cmd_key, 'v')
+            if platform.system() == 'Darwin':
+                os.system('''osascript -e 'tell application "System Events" to keystroke "v" using command down' ''')
+            else:
+                import pyautogui
+                pyautogui.keyDown('ctrl')
+                pyautogui.press('v')
+                pyautogui.keyUp('ctrl')
             
             return json.dumps({
                 'status': 'success',

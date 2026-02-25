@@ -143,7 +143,7 @@ def _init_pyttsx3() -> Optional:
         
         engine = pyttsx3.init(driverName=driver) if driver else pyttsx3.init()
         
-        engine.setProperty('rate', 170)
+        engine.setProperty('rate', 190)
         engine.setProperty('volume', 0.9)
         
         voices = engine.getProperty('voices')
@@ -262,7 +262,7 @@ def speak(text: str, interrupt: bool = True) -> bool:
                 if i > 0:
                     time.sleep(0.3)
                 
-                cmd = ['say', '-v', _current_voice, chunk]
+                cmd = ['say', '-v', _current_voice, '-r', '190', chunk]
                 try:
                     subprocess.run(cmd, timeout=15, capture_output=True, check=False)
                 except subprocess.TimeoutExpired:
@@ -316,9 +316,9 @@ def listen(timeout: int = 5, phrase_time_limit: int = 10) -> str:
     
     try:
         recognizer = sr.Recognizer()
-        recognizer.energy_threshold = 200
-        recognizer.dynamic_energy_threshold = False
-        recognizer.pause_threshold = 1.0
+        recognizer.energy_threshold = 300
+        recognizer.dynamic_energy_threshold = True
+        recognizer.pause_threshold = 0.5
         
         mic = None
         for attempt in range(3):
@@ -382,6 +382,7 @@ def listen(timeout: int = 5, phrase_time_limit: int = 10) -> str:
                     return 'none'
                 except sr.UnknownValueError:
                     logger.debug("Speech recognition could not understand audio in any configured language")
+                    speak("Sir, can you repeat it please?", interrupt=False)
                     return 'none'
                 except sr.RequestError as e:
                     logger.error(f"Speech recognition service error: {e}")

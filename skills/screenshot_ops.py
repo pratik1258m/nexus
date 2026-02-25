@@ -8,8 +8,7 @@ from core.skill import Skill
 class ScreenshotSkill(Skill):
 
     def __init__(self):
-        self.screenshot_dir = os.path.expanduser('~/Desktop/JARVIC_Screenshots'
-            )
+        self.screenshot_dir = os.path.expanduser('~/Desktop/Nexus_Screenshots')
         os.makedirs(self.screenshot_dir, exist_ok=True)
 
     @property
@@ -36,8 +35,12 @@ class ScreenshotSkill(Skill):
             if not filename.endswith('.png'):
                 filename += '.png'
             filepath = os.path.join(self.screenshot_dir, filename)
-            result = os.system(f"screencapture -x '{filepath}'")
-            if result == 0 and os.path.exists(filepath):
+            
+            import pyautogui
+            screenshot = pyautogui.screenshot()
+            screenshot.save(filepath)
+            
+            if os.path.exists(filepath):
                 return json.dumps({'status': 'success', 'message':
                     f'Screenshot saved successfully', 'path': filepath})
             else:

@@ -33,20 +33,19 @@ class NexusEngine:
             logger.warning("Groq API key not found - Groq features unavailable")
         
         self.system_instruction=(
-            'You are Nexus AI, a disciplined assistant created by Pratik Mishra. '
-            'Execute tasks precisely with minimal response but MAXIMUM quality. '
+            'You are Nexus AI, an intelligent, helpful, and highly skilled human-like virtual assistant created by Pratik Mishra. '
+            'Execute tasks precisely and safely, while ensuring your tone is natural, conversational, and polite—like a real human agent. '
             'Rules: '
-            '1. RESPOND WITH SINGLE-WORD CONFIRMATIONS ONLY: "Done.", "Opened.", "Sent.", "Error." '
-            '2. Do NOT explain what you are doing unless explicitly asked "why" or "how". '
+            '1. Respond naturally and conversationally, but keep it brief unless a long answer is required. Avoid robotic "Done.", "Opened." responses, prefer friendly phrases like "I have opened it for you," or "Consider it done, sir." '
+            '2. Do NOT explain what you are doing unless explicitly asked "why" or "how". Do not narrate your step-by-step tool usages. '
             '3. Use ONLY provided tools - never simulate functions. '
             '4. Execute exactly what is asked, but ensure solutions are OPTIMAL and COMPLETED. '
             '   - For HTML, ALWAYS include modern CSS and interactive JS logic. '
             '   - For Python, ensure efficient, clean, and error-free code. '
-            '   - IF context shows an app/editor is open (e.g. "notepad was recently opened"), use `type_code` to type directly. '
+            '   - IF context shows an app/editor is open, use `type_code` to type directly. '
             '     ONLY use `generate_code_file` if the user explicitly asks to "save" or "create a file". '
             '5. CRITICAL: When sending messages, pass the COMPLETE message text - never truncate. '
-            '6. For greetings: "Hello." For thanks: "Welcome." '
-            'Be calm, synchronous, and human-like. Respond like a disciplined system, not a chatbot.'
+            'Be calm, supportive, and human-like. You are a capable partner, not just a command execution machine.'
         )
 
     def run_conversation(self, user_prompt: str) -> str:
@@ -110,18 +109,10 @@ class NexusEngine:
         return response.text
 
     def _run_groq_workflow(self, user_prompt: str) -> str:
-        import re
         messages = [
             {
                 "role": "system",
-                "content": (
-                    "You are Nexus AI, an advanced and intelligent assistant. "
-                    "Your outputs must be top-notch, professional, and precise. "
-                    "When writing content (emails, letters, code), produce the FINAL polished version. "
-                    "Do NOT use placeholders like '[Your Name]'—infer context or use generic but professional fillers. "
-                    "If writing code, provide only the code in markdown blocks. "
-                    "Be concise but thorough."
-                )
+                "content": self.system_instruction
             },
             {"role": "user", "content": user_prompt}
         ]
@@ -135,6 +126,8 @@ class NexusEngine:
         }
 
         def recover_hallucinations(text):
+            import re
+            import ast
             TOOL_MAPPING={
                 'navigate_to_url': 'open_website',
                 'search_google': 'google_search',
@@ -161,7 +154,16 @@ class NexusEngine:
                 function_to_call=self.registry.get_function(real_func_name)
                 if function_to_call:
                     try:
-                        args=json.loads(func_args_str)
+                        try:
+                            args = json.loads(func_args_str)
+                        except json.JSONDecodeError:
+                            clean_str = func_args_str.replace('\n', '\\n')
+                            clean_str = re.sub(r'(["\}])\s*(?="[\w]+"\s*:)', r'\1, ', clean_str)
+                            try:
+                                args = json.loads(clean_str)
+                            except Exception:
+                                clean_str = clean_str.replace('true', 'True').replace('false', 'False').replace('null', 'None')
+                                args = ast.literal_eval(clean_str)
                         res=function_to_call(**args)
                         results.append(str(res))
                     except Exception as e:
@@ -333,7 +335,7 @@ class NexusEngine:
         function = self.registry.get_function(intent.action)
         if not function:
             logger.error(f"Function not found: {intent.action}")
-            return "Error."
+            return "I'm sorry, I don't know how to execute that command."
         
         try:
             result = function(**intent.params)
@@ -341,7 +343,7 @@ class NexusEngine:
             return self._minimize_response(str(result))
         except Exception as e:
             logger.error(f"Local execution error: {e}")
-            return "Error."
+            return f"I encountered an error during execution: {e}"
 
     def _extract_and_save_code(self, text: str) -> str:
         """

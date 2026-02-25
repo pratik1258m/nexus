@@ -1,10 +1,17 @@
 import os
+
+# Suppress annoying third-party deprecation warnings (google-auth, urllib3 NotOpenSSLWarning) globally
+# This must happen before *any* other imports to catch implicit site-packages resolutions
+os.environ["PYTHONWARNINGS"] = "ignore"
+
 import sys
 import argparse
 import threading
 import time
 import string
 from pathlib import Path
+import signal
+import queue
 
 from core.logger import get_logger, set_console_level, disable_console
 from core.config import get_config, validate_config

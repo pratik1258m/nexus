@@ -7,7 +7,7 @@ from core.skill import Skill
 class MemorySkill(Skill):
 
     def __init__(self):
-        self.memory_file = os.path.expanduser('~/.jarvic_memory.json')
+        self.memory_file = os.path.expanduser('~/.nexus_memory.json')
         self._ensure_memory_file()
 
     @property
